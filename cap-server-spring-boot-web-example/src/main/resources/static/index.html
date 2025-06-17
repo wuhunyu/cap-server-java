@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>cap 验证示例（自动填充并验证）</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+        }
+        .container {
+            margin-bottom: 25px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+        h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        #token-input {
+            width: calc(100% - 120px);
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        #verify-button {
+            padding: 9px 15px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            vertical-align: top;
+        }
+        #verify-button:hover {
+            background-color: #0056b3;
+        }
+        .display-box {
+            margin-top: 10px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        #token-display {
+            background-color: #e9ecef;
+            color: #c7254e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>1. 完成人机验证</h3>
+    <p>完成下方的验证码，Token 将会自动获取、填充并发送验证。</p>
+    <cap-widget id="cap" data-cap-api-endpoint="http://localhost:8080/api/cap-server/"></cap-widget>
+</div>
+
+<div class="container">
+    <h3>2. 自动/手动操作区域</h3>
+    <p>Token 会被自动填充到下面的输入框中。您也可以手动修改或粘贴 Token，然后点击按钮进行验证。</p>
+    <input type="text" id="token-input" placeholder="完成验证后，Token 会自动填充到这里">
+    <button id="verify-button">手动验证</button>
+</div>
+
+<div class="container">
+    <h3>从 solve 事件获取的 Token</h3>
+    <pre id="token-display" class="display-box">尚未获取</pre>
+</div>
+
+<div class="container">
+    <h3>后端验证结果</h3>
+    <pre id="result" class="display-box">这里将显示验证服务器的响应结果。</pre>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@cap.js/widget"></script>
+
+<script>
+    const widget = document.querySelector("#cap");
+    const tokenInput = document.querySelector("#token-input");
+    const verifyButton = document.querySelector("#verify-button");
+    const tokenDisplay = document.querySelector("#token-display");
+    const resultContainer = document.querySelector("#result");
+
+    function verifyToken(token) {
+        if (!token || token.trim() === '') {
+            resultContainer.textContent = '错误：Token 不能为空，请输入或先完成人机验证。';
+            return;
+        }
+
+        resultContainer.textContent = '正在向服务器验证 Token...';
+        const verifyUrl = `http://localhost:8080/api/cap-server/verify/${token}`;
+
+        fetch(verifyUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误！状态: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultContainer.textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                console.error('验证请求失败:', error);
+                resultContainer.textContent = `验证失败:\n${error}`;
+            });
+    }
+
+    // 监听 'solve' 事件
+    widget.addEventListener("solve", function (e) {
+        const token = e.detail.token;
+        console.log('收到 Token (来自 solve 事件):', token);
+
+        // 1. 在页面上打印出获取到的 Token
+        tokenDisplay.textContent = token;
+
+        // 2. 自动填充到输入框中
+        tokenInput.value = token; // <-- 这行代码实现了自动填充功能
+
+        // 3. 自动触发验证
+        verifyToken(token);
+    });
+
+    // 监听按钮的点击事件，用于手动触发
+    verifyButton.addEventListener("click", function () {
+        const tokenFromInput = tokenInput.value;
+        console.log('点击手动验证，使用的 Token:', tokenFromInput);
+
+        // 如果是手动触发，也更新一下展示区的 Token，让用户知道当前验证的是哪个
+        if(tokenFromInput){
+            tokenDisplay.textContent = `(手动输入) ${tokenFromInput}`;
+        }
+
+        verifyToken(tokenFromInput);
+    });
+</script>
+</body>
+</html>

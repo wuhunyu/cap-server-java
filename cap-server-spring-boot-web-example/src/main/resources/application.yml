@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: cap-server-spring-boot-web
+  redis:
+    redisson:
+      file: classpath:redisson.yml
+
+cap:
+  server:
+    # 挑战数量
+    challenge-count: 50
+    # 挑战大小
+    challenge-size: 32
+    # 挑战难度
+    challenge-difficulty: 4
+    # 挑战过期时间，单位：毫秒
+    challenge-expires-ms: 600000
+    # token 过期时间，单位：毫秒
+    token-expires-ms: 1200000
+    # id 大小
+    id-size: 16
+    # token 分隔符，一般为:，不需要修改
+    token-key-splitter: ":"
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api

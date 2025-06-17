@@ -1,0 +1,11 @@
+singleServerConfig:
+  address: "redis://[your redis host]:[your redis port]"
+  password: [your redis password]
+  database: 0
+  connectionPoolSize: 10
+  connectionMinimumIdleSize: 5
+  idleConnectionTimeout: 10000
+  connectTimeout: 10000
+  timeout: 3000
+  retryAttempts: 3
+  retryInterval: 1500
