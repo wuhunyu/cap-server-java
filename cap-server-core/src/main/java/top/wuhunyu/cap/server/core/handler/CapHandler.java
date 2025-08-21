@@ -1,7 +1,7 @@
 package top.wuhunyu.cap.server.core.handler;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.collection.ListUtil;
+import cn.hutool.core.lang.Pair;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -9,6 +9,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import lombok.RequiredArgsConstructor;
 import top.wuhunyu.cap.server.core.exception.ChallengeStoreException;
 import top.wuhunyu.cap.server.core.model.Challenge;
+import top.wuhunyu.cap.server.core.model.ChallengeDetail;
 import top.wuhunyu.cap.server.core.model.Token;
 import top.wuhunyu.cap.server.core.properties.CapProperties;
 import top.wuhunyu.cap.server.core.store.CapStore;
@@ -43,15 +44,6 @@ public class CapHandler {
         final var challengeDifficulty = capProperties.getChallengeDifficulty();
         final var challengeExpiresMs = capProperties.getChallengeExpiresMs();
 
-        // 随机生成挑战
-        final var challenges = IntStream.range(0, challengeCount)
-                .boxed()
-                .map(i -> List.of(
-                        RandomUtil.randomString(HEX_STR, challengeSize),
-                        RandomUtil.randomString(HEX_STR, challengeDifficulty)
-                ))
-                .toList();
-
         // 生成 token
         final var token = IdUtil.fastSimpleUUID();
 
@@ -61,7 +53,11 @@ public class CapHandler {
 
         // 构建挑战对象
         final var challenge = Challenge.builder()
-                .challenge(challenges)
+                .challenge(ChallengeDetail.builder()
+                        .c(challengeCount)
+                        .s(challengeSize)
+                        .d(challengeDifficulty)
+                        .build())
                 .token(token)
                 .expires(expires)
                 .build();
@@ -79,13 +75,11 @@ public class CapHandler {
 
     public Token redeemChallenge(
             String token,
-            List<List<Object>> solutions
+            List<Long> solutions
     ) throws IllegalArgumentException, IllegalStateException, ChallengeStoreException {
         if (StrUtil.isBlank(token) || CollUtil.isEmpty(solutions)) {
             throw new IllegalArgumentException("Invalid body");
         }
-        solutions = ListUtil.sub(solutions, 0, capProperties.getChallengeCount());
-
         // 当前日期时间
         final var now = dateHandler.now();
 
@@ -95,28 +89,45 @@ public class CapHandler {
             throw new IllegalStateException("Challenge expired");
         }
 
-        // 验证计算结果是否有效
-        boolean isValid = false;
-        outer:
-        for (final var challenges : challenge.getChallenge()) {
-            final var salt = challenges.get(0);
-            final var target = challenges.get(1);
+        // 生成挑战
+        final var c = challenge.getChallenge().getC();
+        final var s = challenge.getChallenge().getS();
+        final var d = challenge.getChallenge().getD();
+        if (solutions.size() != c) {
+            throw new IllegalArgumentException("Solution not enough");
+        }
+        final var challenges = IntStream.range(1, c + 1)
+                .boxed()
+                .map(i ->
+                        Pair.of(
+                                top.wuhunyu.cap.server.core.utils.RandomUtil.prng(
+                                        String.format("%s%d", token, i),
+                                        s
+                                ),
+                                top.wuhunyu.cap.server.core.utils.RandomUtil.prng(
+                                        String.format("%s%dd", token, i),
+                                        d
+                                )
+                        ))
+                .toList();
 
-            for (final var solution : solutions) {
-                if (Objects.isNull(solution) || solution.size() != 3) {
-                    throw new IllegalArgumentException("Invalid body");
-                }
-                final var s = solution.get(0);
-                final var t = solution.get(1);
-                final var ans = solution.get(2);
-                if (Objects.equals(salt, s) &&
-                        Objects.equals(target, t) &&
-                        DigestUtil.sha256Hex(salt + ans.toString())
-                                .startsWith(target)
-                ) {
-                    isValid = true;
-                    break outer;
-                }
+        // 验证计算结果是否有效
+        final var n = challenges.size();
+        var isValid = true;
+        for (var i = 0; i < n; i++) {
+            final var solution = solutions.get(i);
+            if (solution == 0) {
+                isValid = false;
+                break;
+            }
+
+            final var pair = challenges.get(i);
+            final var salt = pair.getKey();
+            final var target = pair.getValue();
+            if (!DigestUtil.sha256Hex(salt + solution)
+                    .startsWith(target)) {
+                isValid = false;
+                break;
             }
         }
 

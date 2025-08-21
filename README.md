@@ -13,6 +13,13 @@ The code references the built-in server implementation of [Cap](https://github.c
 - Provides the `cap-server-spring-boot-starter` Spring Boot starter for out-of-the-box use.
 - Extends functionality with Redis-based caching for challenges and temporary access credentials.
 
+## Changelog
+
+**0.2.0**
+
+- Issues #2
+- Support for [cap 0.1.25](https://github.com/tiagorangel1/cap/tree/widget%400.1.25)
+
 ## Structure Overview
 
 ```shell

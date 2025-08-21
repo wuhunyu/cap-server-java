@@ -7,28 +7,27 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.Instant;
 
 /**
- * 挑战
+ * 挑战生成配置明细
  *
  * @author wuhunyu
- * @date 2025/06/16 16:14
+ * @date 2025/08/21 17:19
  **/
 
 @Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Challenge implements Serializable {
+public class ChallengeDetail implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = -2996283225878621851L;
+    private static final long serialVersionUID = -2545778614889485441L;
 
-    private ChallengeDetail challenge;
+    private Integer c;
 
-    private Instant expires;
+    private Integer s;
 
-    private String token;
+    private Integer d;
 
 }

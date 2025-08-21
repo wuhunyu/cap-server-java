@@ -6,7 +6,7 @@
     <parent>
         <groupId>top.wuhunyu.cap.server</groupId>
         <artifactId>cap-server-java</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>cap-server-spring-boot-web-example</artifactId>
@@ -15,7 +15,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <cap-server.version>0.1.0</cap-server.version>
+        <cap-server.version>0.2.0</cap-server.version>
         <spring-boot.version>3.4.5</spring-boot.version>
     </properties>
 

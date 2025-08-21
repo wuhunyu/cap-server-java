@@ -13,6 +13,13 @@ Cap Server Java 是开源项目 [Cap](https://github.com/tiagorangel1/cap) 的 s
 - 提供  `cap-server-spring-boot-starter`  spring boot 启动器，开箱即用
 - 扩展实现了基于 redis 缓存挑战以及临时访问凭证
 
+## 更新列表
+
+**0.2.0**
+
+- Issues #2
+- 适配 [cap 0.1.25](https://github.com/tiagorangel1/cap/tree/widget%400.1.25)
+
 ## 结构介绍
 
 ```shell
