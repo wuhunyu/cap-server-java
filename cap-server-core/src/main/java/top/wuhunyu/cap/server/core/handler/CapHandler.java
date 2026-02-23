@@ -16,7 +16,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.IntStream;
 
 /**
@@ -34,6 +33,10 @@ public class CapHandler {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    private static final int CHALLENGE_TOKEN_HEX_LENGTH = 50;
+
+    private static final int VERIFY_TOKEN_HEX_LENGTH = 30;
+
     private final CapProperties capProperties;
 
     private final CapStore capStore;
@@ -47,7 +50,7 @@ public class CapHandler {
         final var challengeExpiresMs = capProperties.getChallengeExpiresMs();
 
         // 生成 token
-        final var token = UUID.randomUUID().toString().replace("-", "");
+        final var token = randomString(HEX_STR, CHALLENGE_TOKEN_HEX_LENGTH);
 
         // 挑战过期时间
         final var expires = dateHandler.now()
@@ -87,7 +90,7 @@ public class CapHandler {
 
         // 移除 token
         final var challenge = capStore.removeChallenge(token);
-        if (Objects.isNull(challenge) || !challenge.getExpires().isAfter(now)) {
+        if (Objects.isNull(challenge) || challenge.getExpires().isBefore(now)) {
             throw new IllegalStateException("Challenge expired");
         }
 
@@ -118,11 +121,6 @@ public class CapHandler {
         var isValid = true;
         for (var i = 0; i < n; i++) {
             final var solution = solutions.get(i);
-            if (solution == 0) {
-                isValid = false;
-                break;
-            }
-
             final var pair = challenges.get(i);
             final var salt = pair.getKey();
             final var target = pair.getValue();
@@ -138,7 +136,7 @@ public class CapHandler {
         }
 
         // 保存 token，用于后续验证
-        final var verToken = UUID.randomUUID().toString().replace("-", "");
+        final var verToken = randomString(HEX_STR, VERIFY_TOKEN_HEX_LENGTH);
         final var expires = now.plus(capProperties.getTokenExpiresMs(), ChronoUnit.MILLIS);
         final var hash = sha256Hex(verToken);
         final var id = randomString(HEX_STR, ((int) capProperties.getIdSize().longValue()));
