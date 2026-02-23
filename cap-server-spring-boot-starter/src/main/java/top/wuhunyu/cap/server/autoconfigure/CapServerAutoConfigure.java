@@ -1,6 +1,5 @@
 package top.wuhunyu.cap.server.autoconfigure;
 
-import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
@@ -86,7 +85,7 @@ public class CapServerAutoConfigure {
         );
         capProperties.setTokenKeySplitter(
                 Optional.ofNullable(capProperties.getTokenKeySplitter())
-                        .filter(StrUtil::isNotBlank)
+                        .filter(tokenKeySplitter -> !tokenKeySplitter.isBlank())
                         .orElse(DEFAULT_TOKEN_KEY_SPLITTER)
         );
     }

@@ -1,11 +1,5 @@
 package top.wuhunyu.cap.server.core.handler;
 
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.lang.Pair;
-import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.RandomUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.DigestUtil;
 import lombok.RequiredArgsConstructor;
 import top.wuhunyu.cap.server.core.exception.ChallengeStoreException;
 import top.wuhunyu.cap.server.core.model.Challenge;
@@ -14,9 +8,15 @@ import top.wuhunyu.cap.server.core.model.Token;
 import top.wuhunyu.cap.server.core.properties.CapProperties;
 import top.wuhunyu.cap.server.core.store.CapStore;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.temporal.ChronoUnit;
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 /**
@@ -32,6 +32,8 @@ public class CapHandler {
     // 十六进制字符串
     public static final String HEX_STR = "0123456789abcdef";
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final CapProperties capProperties;
 
     private final CapStore capStore;
@@ -45,7 +47,7 @@ public class CapHandler {
         final var challengeExpiresMs = capProperties.getChallengeExpiresMs();
 
         // 生成 token
-        final var token = IdUtil.fastSimpleUUID();
+        final var token = UUID.randomUUID().toString().replace("-", "");
 
         // 挑战过期时间
         final var expires = dateHandler.now()
@@ -77,7 +79,7 @@ public class CapHandler {
             String token,
             List<Long> solutions
     ) throws IllegalArgumentException, IllegalStateException, ChallengeStoreException {
-        if (StrUtil.isBlank(token) || CollUtil.isEmpty(solutions)) {
+        if (isBlank(token) || solutions == null || solutions.isEmpty()) {
             throw new IllegalArgumentException("Invalid body");
         }
         // 当前日期时间
@@ -99,7 +101,7 @@ public class CapHandler {
         final var challenges = IntStream.range(1, c + 1)
                 .boxed()
                 .map(i ->
-                        Pair.of(
+                        new AbstractMap.SimpleImmutableEntry<>(
                                 top.wuhunyu.cap.server.core.utils.RandomUtil.prng(
                                         String.format("%s%d", token, i),
                                         s
@@ -124,7 +126,7 @@ public class CapHandler {
             final var pair = challenges.get(i);
             final var salt = pair.getKey();
             final var target = pair.getValue();
-            if (!DigestUtil.sha256Hex(salt + solution)
+            if (!sha256Hex(salt + solution)
                     .startsWith(target)) {
                 isValid = false;
                 break;
@@ -136,10 +138,10 @@ public class CapHandler {
         }
 
         // 保存 token，用于后续验证
-        final var verToken = IdUtil.fastSimpleUUID();
+        final var verToken = UUID.randomUUID().toString().replace("-", "");
         final var expires = now.plus(capProperties.getTokenExpiresMs(), ChronoUnit.MILLIS);
-        final var hash = DigestUtil.sha256Hex(verToken);
-        final var id = RandomUtil.randomString(HEX_STR, ((int) capProperties.getIdSize().longValue()));
+        final var hash = sha256Hex(verToken);
+        final var id = randomString(HEX_STR, ((int) capProperties.getIdSize().longValue()));
         if (!capStore.putToken(
                 this.makeupToken(id, hash),
                 expires
@@ -165,7 +167,7 @@ public class CapHandler {
     public Boolean validateToken(
             String tokenStr
     ) throws IllegalArgumentException {
-        if (StrUtil.isBlank(tokenStr) ||
+        if (isBlank(tokenStr) ||
                 !tokenStr.contains(capProperties.getTokenKeySplitter())) {
             throw new IllegalArgumentException("Invalid body");
         }
@@ -177,12 +179,41 @@ public class CapHandler {
         final var splits = tokenStr.split(capProperties.getTokenKeySplitter(), 2);
         final var id = splits[0];
         final var verToken = splits[1];
-        final var hash = DigestUtil.sha256Hex(verToken);
+        final var hash = sha256Hex(verToken);
         final var tokenKey = this.makeupToken(id, hash);
 
         // 取出 token 的过期时间
         final var expires = capStore.removeToken(tokenKey);
         return Objects.nonNull(expires) && !expires.isBefore(now);
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            final var digest = MessageDigest.getInstance("SHA-256");
+            final var bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            final var builder = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable", e);
+        }
+    }
+
+    private String randomString(String source, int length) {
+        if (source == null || source.isEmpty() || length <= 0) {
+            throw new IllegalArgumentException("Invalid random string args");
+        }
+        final var builder = new StringBuilder(length);
+        for (var i = 0; i < length; i++) {
+            builder.append(source.charAt(SECURE_RANDOM.nextInt(source.length())));
+        }
+        return builder.toString();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
 }
